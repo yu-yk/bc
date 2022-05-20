@@ -1,0 +1,14 @@
+{
+    "log": "error.log",
+    "ffmpeg_log": "ffmpeg_error.log",
+    "header": {
+        "accept":"",
+        "origin":"",
+        "referer":""
+    },
+    "url":"",
+    "account_id":"",
+    "video_id":"",
+    "downloads_path":"downloads",
+    "response_path":"response"
+}

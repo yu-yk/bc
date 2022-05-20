@@ -10,5 +10,6 @@
     "account_id":"",
     "video_id":"",
     "downloads_path":"downloads",
-    "response_path":"response"
+    "response_path":"response",
+    "step": 1000
 }

@@ -1,4 +1,4 @@
-package bcrawl
+package bc
 
 import (
 	"context"
@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"os/signal"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -34,13 +33,9 @@ type Crawler struct {
 	FfmpegErrLogFile *os.File
 }
 
-func (c *Crawler) Run() {
+func (c *Crawler) Run(ctx context.Context) {
 	// Create the pool.
 	buffVIDs := make(chan string, c.PoolSize)
-
-	// Handle sigterm and await termChan signal.
-	termChan := make(chan os.Signal, 1)
-	signal.Notify(termChan, syscall.SIGTERM, syscall.SIGINT)
 
 	// Create wait group for background download process.
 	var wg sync.WaitGroup
@@ -102,34 +97,29 @@ func (c *Crawler) Run() {
 					log.Println(resp.StatusCode())
 					log.Println(string(resp.Body()))
 				}
+				wg.Done()
 			}
 		}()
 	}
 
-	// Create a signal context to stop the API loop.
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
-	defer stop()
-
-	go func(ctx context.Context) {
-		for {
-			select {
-			case <-ctx.Done(): // Stop the loop and exit the goroutine.
-				fmt.Println("video id loop stopped")
-				close(buffVIDs)
-				return
-			default:
-				c.StartVID = c.StartVID + c.Step
-				vid := strconv.Itoa(c.StartVID)
-				buffVIDs <- vid // Fill the pool.
-			}
+LOOP:
+	for {
+		select {
+		case <-ctx.Done(): // Stop the loop and exit the goroutine.
+			close(buffVIDs)
+			break LOOP
+		default:
+			c.StartVID = c.StartVID + c.Step
+			vid := strconv.Itoa(c.StartVID)
+			buffVIDs <- vid // Fill the pool.
+			wg.Add(1)
 		}
-	}(ctx)
+	}
 
-	<-termChan // Blocks here until interrupted.
-	fmt.Println("SIGTERM received. Shutdown process initiated")
-	fmt.Println("waiting for running jobs to finish...")
-	wg.Wait() // Wait all the download operations finish before quit.
-	fmt.Println("all download completed. exiting...")
+	fmt.Println("Shutdown process initiated...")
+	fmt.Println("waiting for running tasks finish...")
+	wg.Wait()
+	fmt.Println("all running tasks completed. exiting...")
 	c.ErrorLogFile.Close()
 	c.FfmpegErrLogFile.Close()
 }

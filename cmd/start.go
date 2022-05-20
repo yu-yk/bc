@@ -5,13 +5,16 @@ Copyright © 2022 yu-yk
 package cmd
 
 import (
+	"context"
 	"log"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	bc "github.com/yu-yk/bc"
+	"github.com/yu-yk/bc"
 )
 
 var (
@@ -82,5 +85,9 @@ func start(cmd *cobra.Command, args []string) {
 		FfmpegErrLogFile: ffmpegErrLogFile,
 	}
 
-	c.Run()
+	// Create a signal context to stop the API loop.
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+	defer stop()
+
+	c.Run(ctx)
 }

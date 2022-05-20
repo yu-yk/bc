@@ -2,7 +2,7 @@
     "log": "error.log",
     "ffmpeg_log": "ffmpeg_error.log",
     "header": {
-        "accept":"",
+        "accept":"application/json;pk=",
         "origin":"",
         "referer":""
     },
@@ -11,5 +11,5 @@
     "video_id":"",
     "downloads_path":"downloads",
     "response_path":"response",
-    "step": 1000
+    "step":1000
 }

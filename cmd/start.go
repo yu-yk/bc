@@ -61,7 +61,6 @@ func start(cmd *cobra.Command, args []string) {
 	if err != nil {
 		panic(err)
 	}
-	log.SetOutput(errorLogFile)
 
 	// Set ffmpeg error log file.
 	ffmpegErrLogFile, err := os.OpenFile(viper.GetString("ffmpeg_log"), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
@@ -83,6 +82,8 @@ func start(cmd *cobra.Command, args []string) {
 		ResponsePath:     viper.GetString("response_path"),
 		ErrorLogFile:     errorLogFile,
 		FfmpegErrLogFile: ffmpegErrLogFile,
+		CurrVID:          os.Stdout,
+		CurrStatus:       os.Stdout,
 	}
 
 	// Create a signal context to stop the API loop.

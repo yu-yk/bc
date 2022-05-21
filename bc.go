@@ -3,7 +3,6 @@ package bc
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -19,6 +18,12 @@ import (
 	"github.com/go-resty/resty/v2"
 )
 
+var (
+	running   = "running..."
+	waiting   = "waiting download tasks finish..."
+	completed = "all download tasks completed."
+)
+
 type Crawler struct {
 	URL              string
 	Headers          map[string]string
@@ -29,11 +34,16 @@ type Crawler struct {
 	Download         bool
 	ResponsePath     string
 	DownloadsPath    string
-	ErrorLogFile     *os.File
-	FfmpegErrLogFile *os.File
+	ErrorLogFile     io.WriteCloser
+	FfmpegErrLogFile io.WriteCloser
+	CurrVID          io.Writer
+	CurrStatus       io.Writer
 }
 
 func (c *Crawler) Run(ctx context.Context) {
+	// Set Output
+	log.SetOutput(c.ErrorLogFile)
+
 	// Create the pool.
 	buffVIDs := make(chan string, c.PoolSize)
 
@@ -54,7 +64,7 @@ func (c *Crawler) Run(ctx context.Context) {
 		go func() {
 			// Get the vid from pool and call the API.
 			for vid := range buffVIDs {
-				fmt.Print(vid, " ")
+				c.CurrVID.Write([]byte(vid + " "))
 				url := c.URL + vid
 				resp, err := client.R().Get(url)
 				if err != nil {
@@ -64,7 +74,6 @@ func (c *Crawler) Run(ctx context.Context) {
 
 				if resp.StatusCode() == http.StatusOK { // Video found.
 					wg.Add(1)
-					fmt.Println("found! downloading...")
 
 					go func() { // Download the response and video concurrently.
 						defer wg.Done()
@@ -102,6 +111,8 @@ func (c *Crawler) Run(ctx context.Context) {
 		}()
 	}
 
+	c.CurrStatus.Write([]byte(running + "\n"))
+
 LOOP:
 	for {
 		select {
@@ -116,10 +127,9 @@ LOOP:
 		}
 	}
 
-	fmt.Println("Shutdown process initiated...")
-	fmt.Println("waiting for running tasks finish...")
+	c.CurrStatus.Write([]byte(waiting + "\n"))
 	wg.Wait()
-	fmt.Println("all running tasks completed. exiting...")
+	c.CurrStatus.Write([]byte(completed + "\n"))
 	c.ErrorLogFile.Close()
 	c.FfmpegErrLogFile.Close()
 }
